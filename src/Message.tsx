@@ -145,6 +145,9 @@ const Message: React.FC = () => {
           <TouchableOpacity onPress={() => setnextscreen(true)}>
             <Text style={styles.title}>⬅️</Text>
           </TouchableOpacity>
+          <View>
+            <Text style={styles.title2}>Recent Chats</Text>
+          </View>
           <FlatList
             data={userData}
             keyExtractor={(item, index) => index.toString()}
@@ -181,11 +184,7 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: 'rgba(20, 186, 280, 0.5)',
-  },
-  userEmail: {
-    fontSize: 12,
-    color: 'rgba(20, 250, 150, 0.7)',
+    color: 'rgba(20, 480, 210, 0.2)',
   },
   userItem: {
     flexDirection: 'row',
@@ -193,14 +192,16 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   title: {
-    fontSize: 30,
+    fontSize: 25,
     fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 2,
     color: 'rgba(20, 186, 280, 0.5)',
   },
   userInfo: {
     flexDirection: 'column',
-    marginLeft: 10,
+    marginLeft: 0,
+
+    marginTop: 5,
   },
   messageContainer: {
     borderRadius: 5,
@@ -226,6 +227,14 @@ const styles = StyleSheet.create({
   receiverText: {
     fontSize: 14,
     color: 'rgba(230, 180, 210, 1)',
+  },
+  title2: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginLeft: 120,
+
+    marginTop: -32,
+    color: 'rgba(20, 186, 280, 0.5)',
   },
 });
 
