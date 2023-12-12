@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {useAuth} from './authContext';
+import ChatScreen from './ChatScreen';
 
 interface UserData {
   id: number;
@@ -17,8 +18,8 @@ interface UserData {
 
 interface MessageData {
   id: string;
-  sender_id: string;
-  receiver_id: string;
+  sender_id: number;
+  receiver_id: number;
   sender_name: string;
   receiver_name: string;
   message_text: string;
@@ -26,6 +27,7 @@ interface MessageData {
 }
 
 const Message: React.FC = () => {
+  const [nextscreen, setnextscreen] = useState(false);
   const [userData, setUserData] = useState<UserData[]>([]);
   const [selectedReceiverId, setSelectedReceiverId] = useState<number | null>(
     null,
@@ -83,14 +85,13 @@ const Message: React.FC = () => {
         // Filter messages where either sender_id or receiver_id matches the selectedReceiverId and loggedInUserId
         const filteredMessages = data.filter(
           message =>
-            ((message.sender_id === selectedReceiverId?.toString() &&
-              message.receiver_id === loggedInUserId?.toString()) ||
-              (message.receiver_id === selectedReceiverId?.toString() &&
-                message.sender_id === loggedInUserId?.toString())) &&
+            ((message.sender_id === selectedReceiverId &&
+              message.receiver_id === loggedInUserId) ||
+              (message.receiver_id === selectedReceiverId &&
+                message.sender_id === loggedInUserId)) &&
             selectedReceiverId !== undefined &&
             loggedInUserId !== undefined,
         );
-
         console.log('Filtered messages:', filteredMessages);
 
         setMessageHistory(filteredMessages);
@@ -110,43 +111,60 @@ const Message: React.FC = () => {
       }}>
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{item.name}</Text>
-        <Text style={styles.userEmail}>{item.email}</Text>
       </View>
     </TouchableOpacity>
   );
 
   const renderMessageItem = ({item}: {item: MessageData}) => (
-    <View>
-      <Text>
-        {item.sender_name}: {item.message_text}
-      </Text>
+    <View style={styles.messageItem}>
+      <View
+        style={[
+          styles.messageContainer,
+          item.sender_id === loggedInUserId
+            ? styles.senderContainer
+            : styles.receiverContainer,
+        ]}>
+        <Text
+          style={
+            item.sender_id === loggedInUserId
+              ? styles.senderText
+              : styles.receiverText
+          }>
+          {item.message_text}
+        </Text>
+      </View>
     </View>
   );
-
-  return (
-    <ImageBackground
-      source={require('../assets/background3.jpg')}
-      style={styles.backgroundImage}
-      resizeMode="cover">
-      <View style={styles.container}>
-        <FlatList
-          data={userData}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={renderReceiverItem}
-        />
-        {selectedReceiverId !== null && (
-          <View>
-            <Text></Text>
-            <FlatList
-              data={messageHistory}
-              keyExtractor={(item, index) => index.toString()}
-              renderItem={renderMessageItem}
-            />
-          </View>
-        )}
-      </View>
-    </ImageBackground>
-  );
+  if (!nextscreen) {
+    return (
+      <ImageBackground
+        source={require('../assets/background3.jpg')}
+        style={styles.backgroundImage}
+        resizeMode="cover">
+        <View style={styles.container}>
+          <TouchableOpacity onPress={() => setnextscreen(true)}>
+            <Text style={styles.title}>⬅️</Text>
+          </TouchableOpacity>
+          <FlatList
+            data={userData}
+            keyExtractor={(item, index) => index.toString()}
+            renderItem={renderReceiverItem}
+          />
+          {selectedReceiverId !== null && (
+            <View style={styles.messageContainer}>
+              <FlatList
+                data={messageHistory}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={renderMessageItem}
+              />
+            </View>
+          )}
+        </View>
+      </ImageBackground>
+    );
+  } else {
+    return <ChatScreen />;
+  }
 };
 
 const styles = StyleSheet.create({
@@ -173,6 +191,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 3,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    marginBottom: 30,
+    color: 'rgba(20, 186, 280, 0.5)',
+  },
+  userInfo: {
+    flexDirection: 'column',
+    marginLeft: 10,
+  },
+  messageContainer: {
+    borderRadius: 5,
+    marginTop: 5, // Adjusted marginTop for closer spacing
+    padding: 10,
+    maxWidth: '70%', // Adjusted maxWidth to limit message width
+  },
+  messageItem: {
+    marginBottom: 10,
+  },
+  senderContainer: {
+    alignSelf: 'flex-end',
+    backgroundColor: 'rgba(20, 186, 280, 0.1)',
+  },
+  receiverContainer: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(230, 180, 210, 0.2)',
+  },
+  senderText: {
+    fontSize: 14,
+    color: 'rgba(120, 186, 280,1)',
+  },
+  receiverText: {
+    fontSize: 14,
+    color: 'rgba(230, 180, 210, 1)',
   },
 });
 
