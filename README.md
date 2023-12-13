@@ -10,9 +10,9 @@
 
 - Robust Authentication
 - E2E Messaging
-- Real-time updates for incoming messages.
-- Admin Broadcasting
-- Admin capability to broadcast messages to all users
+- Real-time updates for incoming messages using Push Notifications.
+- Admin Broadcasting capability to broadcast messages to all users
+- Singular User Interaction and Messaging.
 - Broadcasting history 
 - Interactive UI
   
