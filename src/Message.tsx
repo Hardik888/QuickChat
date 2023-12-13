@@ -42,7 +42,7 @@ const Message: React.FC = () => {
   const [messageText, setMessageText] = useState('');
 
   const {email: loggedInUserEmail} = useAuth();
-  const animatedValue = new Animated.Value(0);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,6 +78,7 @@ const Message: React.FC = () => {
     fetchData();
   }, [loggedInUserEmail]);
 
+  
   const fetchMessageHistory = async (receiverId: number) => {
     try {
       const response = await fetch(
@@ -88,6 +89,8 @@ const Message: React.FC = () => {
         const data: MessageData[] = await response.json();
         console.log('Received message data:', data);
 
+        const yourFilterTime = new Date('2023-12-13T06:13:20').getTime(); // Replace with your desired timestamp
+
         const filteredMessages = data.filter(
           message =>
             ((message.sender_id === selectedReceiverId &&
@@ -95,11 +98,19 @@ const Message: React.FC = () => {
               (message.receiver_id === selectedReceiverId &&
                 message.sender_id === loggedInUserId)) &&
             selectedReceiverId !== undefined &&
-            loggedInUserId !== undefined,
+            loggedInUserId !== undefined &&
+            new Date(message.timestamp).getTime() > yourFilterTime,
         );
-        console.log('Filtered messages:', filteredMessages);
 
-        setMessageHistory(filteredMessages);
+        // Sort the filteredMessages array by timestamp in descending order
+        const sortedMessages = filteredMessages.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+        );
+
+        console.log('Sorted messages:', sortedMessages);
+
+        setMessageHistory(sortedMessages);
       } else {
         console.error('Failed to fetch message history');
       }
@@ -131,7 +142,7 @@ const Message: React.FC = () => {
           }),
         ),
       ).start();
-    }, 3000);
+    }, 60000);
 
     fetchMessageHistory(userId);
   };
@@ -159,7 +170,7 @@ const Message: React.FC = () => {
       );
 
       if (response.ok) {
-        // Assuming you have a function to fetch updated message history
+      
         fetchMessageHistory(receiver_id);
         setMessageText('');
       } else {
@@ -182,6 +193,7 @@ const Message: React.FC = () => {
     </TouchableOpacity>
   );
 
+  
   const renderMessageItem = ({item}: {item: MessageData}) => (
     <View style={styles.messageItem}>
       <View
@@ -203,6 +215,7 @@ const Message: React.FC = () => {
     </View>
   );
 
+ 
   return (
     <View style={{flex: 1}}>
       {!nextscreen ? (
@@ -225,6 +238,7 @@ const Message: React.FC = () => {
             {selectedReceiverId !== null && (
               <View style={styles.messageContainer}>
                 <FlatList
+                  inverted={true} // Reverse the rendering order
                   data={messageHistory}
                   keyExtractor={(item, index) => index.toString()}
                   renderItem={renderMessageItem}
@@ -324,6 +338,9 @@ const styles = StyleSheet.create({
     color: 'rgba(230, 180, 210, 2)',
   },
 });
+
+export default Message;
+
 
 export default Message;
 
