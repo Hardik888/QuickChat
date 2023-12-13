@@ -4,6 +4,7 @@ import {
   Text,
   FlatList,
   StyleSheet,
+  TextInput,
   ImageBackground,
   TouchableOpacity,
   Animated,
@@ -38,6 +39,7 @@ const Message: React.FC = () => {
   const [loggedInUserId, setLoggedInUserId] = useState<number | undefined>(
     undefined,
   );
+  const [messageText, setMessageText] = useState('');
 
   const {email: loggedInUserEmail} = useAuth();
   const animatedValue = new Animated.Value(0);
@@ -57,13 +59,11 @@ const Message: React.FC = () => {
             setLoggedInUserId(id);
           }
 
-          // Initialize opacity for each user
           const usersWithOpacity = data.map(user => ({
             ...user,
-            opacity: new Animated.Value(1), // Set initial opacity to 1 for all users
+            opacity: new Animated.Value(1),
           }));
 
-          // Filter out the logged-in user's data
           setUserData(
             usersWithOpacity.filter(user => user.email !== loggedInUserEmail),
           );
@@ -88,7 +88,6 @@ const Message: React.FC = () => {
         const data: MessageData[] = await response.json();
         console.log('Received message data:', data);
 
-        // Filter messages where either sender_id or receiver_id matches the selectedReceiverId and loggedInUserId
         const filteredMessages = data.filter(
           message =>
             ((message.sender_id === selectedReceiverId &&
@@ -112,24 +111,22 @@ const Message: React.FC = () => {
   const handleNamePress = (userId: number) => {
     setSelectedReceiverId(userId);
 
-    // Reset opacity to 0 for all users except the selected user
     Animated.parallel(
       userData.map(user =>
         Animated.timing(user.opacity!, {
           toValue: userId === user.id ? 1 : 0,
-          duration: 50, // You can adjust the duration as needed
+          duration: 50,
           useNativeDriver: true,
         }),
       ),
     ).start();
 
-    // Reset opacity for all users after 6 seconds
     setTimeout(() => {
       Animated.parallel(
         userData.map(user =>
           Animated.timing(user.opacity!, {
             toValue: 1,
-            duration: 50, // You can adjust the duration as needed
+            duration: 50,
             useNativeDriver: true,
           }),
         ),
@@ -139,12 +136,48 @@ const Message: React.FC = () => {
     fetchMessageHistory(userId);
   };
 
+  const sendMessage = async (sender_id: number, receiver_id: number) => {
+    if (!messageText) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        'http://10.0.2.2:80/myapp/sendnotification.php',
+        {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sender_id: sender_id,
+            receiver_id: receiver_id,
+            message_text: messageText,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        // Assuming you have a function to fetch updated message history
+        fetchMessageHistory(receiver_id);
+        setMessageText('');
+      } else {
+        console.error('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+
   const renderReceiverItem = ({item}: {item: UserData}) => (
     <TouchableOpacity
       style={styles.userItem}
       onPress={() => handleNamePress(item.id)}>
       <Animated.View style={[styles.userInfo, {opacity: item.opacity}]}>
-        <Text style={styles.userName}>{item.name}</Text>
+        <Text style={styles.userName}>
+          {item.name} {item.id === selectedReceiverId ? '💬' : ''}
+        </Text>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -170,39 +203,50 @@ const Message: React.FC = () => {
     </View>
   );
 
-  if (!nextscreen) {
-    return (
-      <ImageBackground
-        source={require('../assets/background3.jpg')}
-        style={styles.backgroundImage}
-        resizeMode="cover">
-        <View style={styles.container}>
-          <TouchableOpacity onPress={() => setNextScreen(true)}>
-            <Text style={styles.title}>⬅️</Text>
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.title2}>Recent Chats</Text>
-          </View>
-          <FlatList
-            data={userData}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={renderReceiverItem}
-          />
-          {selectedReceiverId !== null && (
-            <View style={styles.messageContainer}>
-              <FlatList
-                data={messageHistory}
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={renderMessageItem}
-              />
+  return (
+    <View style={{flex: 1}}>
+      {!nextscreen ? (
+        <ImageBackground
+          source={require('../assets/background3.jpg')}
+          style={styles.backgroundImage}
+          resizeMode="cover">
+          <View style={styles.container}>
+            <TouchableOpacity onPress={() => setNextScreen(true)}>
+              <Text style={styles.title}>⬅</Text>
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.title2}> Chats💬</Text>
             </View>
-          )}
-        </View>
-      </ImageBackground>
-    );
-  } else {
-    return <ChatScreen />;
-  }
+            <FlatList
+              data={userData}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={renderReceiverItem}
+            />
+            {selectedReceiverId !== null && (
+              <View style={styles.messageContainer}>
+                <FlatList
+                  data={messageHistory}
+                  keyExtractor={(item, index) => index.toString()}
+                  renderItem={renderMessageItem}
+                />
+              </View>
+            )}
+            <TextInput
+              style={styles.inputField}
+              placeholder="Type your message..."
+              value={messageText}
+              onChangeText={text => setMessageText(text)}
+              onSubmitEditing={() =>
+                sendMessage(loggedInUserId!, selectedReceiverId!)
+              }
+            />
+          </View>
+        </ImageBackground>
+      ) : (
+        <ChatScreen />
+      )}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -219,18 +263,28 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: 'rgba(20, 480, 210, 0.2)',
+    color: 'rgba(50, 180, 200, 0.8)',
   },
   userItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 3,
   },
+  inputField: {
+    height: 40,
+    borderWidth: 1,
+    borderColor: 'rgba(230, 180, 210, 2)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    marginTop: 10,
+    width: '80%',
+  },
   title: {
-    fontSize: 25,
+    fontSize: 39,
     fontWeight: 'bold',
-    marginBottom: 2,
-    color: 'rgba(20, 186, 280, 0.5)',
+    marginBottom: 15,
+    marginTop: -20,
+    color: 'rgba(230, 180, 210, 2)',
   },
   userInfo: {
     flexDirection: 'column',
@@ -260,14 +314,14 @@ const styles = StyleSheet.create({
   },
   receiverText: {
     fontSize: 14,
-    color: 'rgba(230, 180, 210, 1)',
+    color: 'rgba(310, 180, 210, 1)',
   },
   title2: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginLeft: 120,
-    marginTop: -32,
-    color: 'rgba(20, 186, 280, 0.5)',
+    marginLeft: 150,
+    marginTop: -48,
+    color: 'rgba(230, 180, 210, 2)',
   },
 });
 
