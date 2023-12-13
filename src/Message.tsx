@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ImageBackground,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import {useAuth} from './authContext';
 import ChatScreen from './ChatScreen';
@@ -14,6 +15,7 @@ interface UserData {
   id: number;
   name: string;
   email: string;
+  opacity?: Animated.Value;
 }
 
 interface MessageData {
@@ -27,7 +29,7 @@ interface MessageData {
 }
 
 const Message: React.FC = () => {
-  const [nextscreen, setnextscreen] = useState(false);
+  const [nextscreen, setNextScreen] = useState(false);
   const [userData, setUserData] = useState<UserData[]>([]);
   const [selectedReceiverId, setSelectedReceiverId] = useState<number | null>(
     null,
@@ -38,6 +40,7 @@ const Message: React.FC = () => {
   );
 
   const {email: loggedInUserEmail} = useAuth();
+  const animatedValue = new Animated.Value(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,8 +57,16 @@ const Message: React.FC = () => {
             setLoggedInUserId(id);
           }
 
+          // Initialize opacity for each user
+          const usersWithOpacity = data.map(user => ({
+            ...user,
+            opacity: new Animated.Value(1), // Set initial opacity to 1 for all users
+          }));
+
           // Filter out the logged-in user's data
-          setUserData(data.filter(user => user.email !== loggedInUserEmail));
+          setUserData(
+            usersWithOpacity.filter(user => user.email !== loggedInUserEmail),
+          );
         } else {
           console.error('Failed to fetch user data');
         }
@@ -76,11 +87,6 @@ const Message: React.FC = () => {
         console.log('Fetching message history for receiverId:', receiverId);
         const data: MessageData[] = await response.json();
         console.log('Received message data:', data);
-        const convertedReceiverId = selectedReceiverId?.toString();
-        const convertedUserId = loggedInUserId?.toString();
-
-        console.log('Converted Receiver Id:', convertedReceiverId);
-        console.log('Converted User Id:', convertedUserId);
 
         // Filter messages where either sender_id or receiver_id matches the selectedReceiverId and loggedInUserId
         const filteredMessages = data.filter(
@@ -102,16 +108,44 @@ const Message: React.FC = () => {
       console.error('Error fetching message history:', error);
     }
   };
+
+  const handleNamePress = (userId: number) => {
+    setSelectedReceiverId(userId);
+
+    // Reset opacity to 0 for all users except the selected user
+    Animated.parallel(
+      userData.map(user =>
+        Animated.timing(user.opacity!, {
+          toValue: userId === user.id ? 1 : 0,
+          duration: 50, // You can adjust the duration as needed
+          useNativeDriver: true,
+        }),
+      ),
+    ).start();
+
+    // Reset opacity for all users after 6 seconds
+    setTimeout(() => {
+      Animated.parallel(
+        userData.map(user =>
+          Animated.timing(user.opacity!, {
+            toValue: 1,
+            duration: 50, // You can adjust the duration as needed
+            useNativeDriver: true,
+          }),
+        ),
+      ).start();
+    }, 3000);
+
+    fetchMessageHistory(userId);
+  };
+
   const renderReceiverItem = ({item}: {item: UserData}) => (
     <TouchableOpacity
       style={styles.userItem}
-      onPress={() => {
-        setSelectedReceiverId(item.id);
-        fetchMessageHistory(item.id);
-      }}>
-      <View style={styles.userInfo}>
+      onPress={() => handleNamePress(item.id)}>
+      <Animated.View style={[styles.userInfo, {opacity: item.opacity}]}>
         <Text style={styles.userName}>{item.name}</Text>
-      </View>
+      </Animated.View>
     </TouchableOpacity>
   );
 
@@ -135,6 +169,7 @@ const Message: React.FC = () => {
       </View>
     </View>
   );
+
   if (!nextscreen) {
     return (
       <ImageBackground
@@ -142,7 +177,7 @@ const Message: React.FC = () => {
         style={styles.backgroundImage}
         resizeMode="cover">
         <View style={styles.container}>
-          <TouchableOpacity onPress={() => setnextscreen(true)}>
+          <TouchableOpacity onPress={() => setNextScreen(true)}>
             <Text style={styles.title}>⬅️</Text>
           </TouchableOpacity>
           <View>
@@ -179,7 +214,7 @@ const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
     width: '120%',
-    height: '200%',
+    height: '150%',
   },
   userName: {
     fontSize: 15,
@@ -200,14 +235,13 @@ const styles = StyleSheet.create({
   userInfo: {
     flexDirection: 'column',
     marginLeft: 0,
-
     marginTop: 5,
   },
   messageContainer: {
     borderRadius: 5,
-    marginTop: 5, // Adjusted marginTop for closer spacing
+    marginTop: 5,
     padding: 10,
-    maxWidth: '70%', // Adjusted maxWidth to limit message width
+    maxWidth: '70%',
   },
   messageItem: {
     marginBottom: 10,
@@ -232,11 +266,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginLeft: 120,
-
     marginTop: -32,
     color: 'rgba(20, 186, 280, 0.5)',
   },
 });
 
 export default Message;
+
 
